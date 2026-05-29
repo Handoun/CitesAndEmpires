@@ -14,14 +14,14 @@ public class CenturyGUI {
     private final int townId;
 
     private static final Material[] ICONS = {
-        Material.STONE,          // 1
-        Material.COBBLESTONE,    // 2
-        Material.IRON_INGOT,     // 3
-        Material.GOLD_INGOT,     // 4
-        Material.DIAMOND,        // 5
-        Material.EMERALD,        // 6
-        Material.NETHERITE_INGOT,// 7
-        Material.BEACON          // 8
+        Material.STONE,          // 1 - Примитивный
+        Material.COBBLESTONE,    // 2 - Каменный
+        Material.IRON_INGOT,     // 3 - Железный
+        Material.GOLD_INGOT,     // 4 - Золотой
+        Material.DIAMOND,        // 5 - Алмазный
+        Material.EMERALD,        // 6 - Изумрудный
+        Material.NETHERITE_INGOT,// 7 - Незеритовый
+        Material.BEACON          // 8 - Энергетический
     };
 
     private static final String[] NAMES = {
@@ -35,7 +35,7 @@ public class CenturyGUI {
         "Энергетический век"
     };
 
-    // Требования (значительно увеличены) – ключ: номер следующего века
+    // Требования ресурсов (увеличены, русские названия)
     private static final Map<Integer, Map<Material, Integer>> COSTS = new HashMap<>();
     static {
         Map<Material, Integer> to2 = new HashMap<>();
@@ -74,7 +74,7 @@ public class CenturyGUI {
         COSTS.put(8, to8);
     }
 
-    // Русские названия материалов
+    // Русские названия материалов для отображения в GUI
     private static String getMaterialName(Material mat) {
         switch (mat) {
             case COBBLESTONE: return "Булыжник";
@@ -95,31 +95,44 @@ public class CenturyGUI {
         }
     }
 
-    // Минимальный век для крафта
+    /**
+     * Минимальный век, необходимый для крафта материала.
+     * Каменные инструменты теперь требуют Каменного века (2).
+     */
     public static int getRequiredCenturyForCraft(Material mat) {
         switch (mat) {
+            // Каменные инструменты и оружие → Каменный век (2)
+            case STONE_PICKAXE: case STONE_AXE: case STONE_SWORD: case STONE_HOE: case STONE_SHOVEL:
+                return 2;
+            // Железо → Железный век (3)
             case IRON_PICKAXE: case IRON_AXE: case IRON_SWORD: case IRON_HOE: case IRON_SHOVEL:
             case IRON_HELMET: case IRON_CHESTPLATE: case IRON_LEGGINGS: case IRON_BOOTS:
             case IRON_INGOT: case IRON_BLOCK:
                 return 3;
+            // Золото → Золотой век (4)
             case GOLDEN_PICKAXE: case GOLDEN_AXE: case GOLDEN_SWORD: case GOLDEN_HOE: case GOLDEN_SHOVEL:
             case GOLDEN_HELMET: case GOLDEN_CHESTPLATE: case GOLDEN_LEGGINGS: case GOLDEN_BOOTS:
             case GOLD_INGOT: case GOLD_BLOCK:
                 return 4;
+            // Алмазы → Алмазный век (5)
             case DIAMOND_PICKAXE: case DIAMOND_AXE: case DIAMOND_SWORD: case DIAMOND_HOE: case DIAMOND_SHOVEL:
             case DIAMOND_HELMET: case DIAMOND_CHESTPLATE: case DIAMOND_LEGGINGS: case DIAMOND_BOOTS:
             case DIAMOND: case DIAMOND_BLOCK:
                 return 5;
+            // Незерит → Незеритовый век (7)
             case NETHERITE_PICKAXE: case NETHERITE_AXE: case NETHERITE_SWORD: case NETHERITE_HOE: case NETHERITE_SHOVEL:
             case NETHERITE_HELMET: case NETHERITE_CHESTPLATE: case NETHERITE_LEGGINGS: case NETHERITE_BOOTS:
             case NETHERITE_INGOT: case NETHERITE_BLOCK:
                 return 7;
+            // Всё остальное (дерево, кожа, еда и т.д.) доступно с примитивного века
             default:
                 return 1;
         }
     }
 
-    // Минимальный век для добычи руды
+    /**
+     * Минимальный век, необходимый для добычи руды.
+     */
     public static int getRequiredCenturyForMining(Material ore) {
         switch (ore) {
             case COAL_ORE: case DEEPSLATE_COAL_ORE: return 2;
