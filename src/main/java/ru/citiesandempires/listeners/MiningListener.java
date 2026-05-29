@@ -14,21 +14,20 @@ public class MiningListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.HIGH) // после привата
+    @EventHandler(priority = EventPriority.HIGH)
     public void onBlockBreak(BlockBreakEvent e) {
         if (e.isCancelled()) return;
         Player player = e.getPlayer();
         int townId = plugin.getTownManager().getTownIdByMember(player.getUniqueId().toString());
-        if (townId == 0) return; // не в городе – без ограничений
+        int currentCentury = townId == 0 ? 1 : plugin.getTownManager().getCentury(townId);
 
         Material block = e.getBlock().getType();
-        int requiredCentury = CenturyGUI.getRequiredCenturyForMining(block);
-        if (requiredCentury <= 1) return; // всегда доступно
+        int required = CenturyGUI.getRequiredCenturyForMining(block);
+        if (required <= 1) return; // примитивный век – всё доступно
 
-        int currentCentury = plugin.getTownManager().getCentury(townId);
-        if (currentCentury < requiredCentury) {
+        if (currentCentury < required) {
             e.setCancelled(true);
-            player.sendMessage("§cВаш город не достиг " + CenturyGUI.getCenturyName(requiredCentury) + ". Добыча этого ресурса запрещена.");
+            player.sendMessage("§cВаш век не позволяет добывать это. Требуется: " + CenturyGUI.getCenturyName(required));
         }
     }
 }

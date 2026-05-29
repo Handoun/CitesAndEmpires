@@ -19,9 +19,9 @@ public class CraftListener implements Listener {
         if (!(e.getWhoClicked() instanceof Player)) return;
         Player player = (Player) e.getWhoClicked();
         int townId = plugin.getTownManager().getTownIdByMember(player.getUniqueId().toString());
-        if (townId == 0) return; // не в городе – без ограничений
+        // Игрок без города получает примитивный век (1)
+        int currentCentury = townId == 0 ? 1 : plugin.getTownManager().getCentury(townId);
 
-        int currentCentury = plugin.getTownManager().getCentury(townId);
         Material result = e.getRecipe().getResult().getType();
         int required = CenturyGUI.getRequiredCenturyForCraft(result);
         if (currentCentury < required) {
