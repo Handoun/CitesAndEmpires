@@ -22,19 +22,17 @@ public class TownProtect implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) {
-        Player p = e.getPlayer();
-        if (!townManager.canBuild(p, e.getBlock().getChunk())) {
+        if (!canBreakOrPlace(e.getPlayer(), e.getBlock().getChunk())) {
             e.setCancelled(true);
-            p.sendMessage("§cЭто чужая территория!");
+            e.getPlayer().sendMessage("§cЭто чужая территория!");
         }
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent e) {
-        Player p = e.getPlayer();
-        if (!townManager.canBuild(p, e.getBlock().getChunk())) {
+        if (!canBreakOrPlace(e.getPlayer(), e.getBlock().getChunk())) {
             e.setCancelled(true);
-            p.sendMessage("§cЭто чужая территория!");
+            e.getPlayer().sendMessage("§cЭто чужая территория!");
         }
     }
 
@@ -53,5 +51,18 @@ public class TownProtect implements Listener {
             message = "§7Дикая земля";
         }
         p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
+    }
+
+    /**
+     * Возвращает true, если игрок может ломать/ставить блоки в этом чанке.
+     * Разрешает всегда на диких землях.
+     */
+    private boolean canBreakOrPlace(Player player, Chunk chunk) {
+        // Дикие земли – можно всем
+        if (!townManager.isClaimed(chunk.getWorld().getName(), chunk.getX(), chunk.getZ())) {
+            return true;
+        }
+        // Городская земля – только своим
+        return townManager.canBuild(player, chunk);
     }
 }
