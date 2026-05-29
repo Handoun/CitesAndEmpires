@@ -45,6 +45,14 @@ public class TownCmd implements CommandExecutor, TabCompleter {
                 if (args.length < 2) { player.sendMessage("§c/town join <название>"); return true; }
                 plugin.getTownManager().joinTown(player, args[1]);
                 return true;
+            case "accept":
+                if (args.length < 2) { player.sendMessage("§c/town accept <название города>"); return true; }
+                plugin.getTownManager().acceptInvite(player, args[1]);
+                return true;
+            case "deny":
+                if (args.length < 2) { player.sendMessage("§c/town deny <название города>"); return true; }
+                plugin.getTownManager().denyInvite(player, args[1]);
+                return true;
         }
 
         // Остальные команды требуют членства
@@ -55,11 +63,8 @@ public class TownCmd implements CommandExecutor, TabCompleter {
 
         switch (sub) {
             case "claim":
-                int radius = 1;
-                if (args.length > 1) {
-                    try { radius = Integer.parseInt(args[1]); } catch (NumberFormatException ignored) {}
-                }
-                plugin.getTownManager().claimChunk(player, radius);
+                // Радиус игнорируется – захватываем ровно один чанк
+                plugin.getTownManager().claimChunk(player, 0);
                 break;
             case "unclaim":
                 if (args.length > 1 && "all".equalsIgnoreCase(args[1])) {
@@ -119,7 +124,7 @@ public class TownCmd implements CommandExecutor, TabCompleter {
                 break;
             case "add":
                 if (args.length < 2) { player.sendMessage("§c/town add <ник>"); return true; }
-                plugin.getTownManager().addPlayer(player, args[1]);
+                plugin.getTownManager().invitePlayer(player, args[1]);
                 break;
             case "rank":
                 if (args.length < 4 || !"add".equalsIgnoreCase(args[1])) {
@@ -156,6 +161,8 @@ public class TownCmd implements CommandExecutor, TabCompleter {
                 subs.add("new");
                 subs.add("ask");
                 subs.add("join");
+                subs.add("accept");
+                subs.add("deny");
             } else {
                 subs.add("claim");
                 subs.add("unclaim");
@@ -176,7 +183,9 @@ public class TownCmd implements CommandExecutor, TabCompleter {
         } else if (args.length == 2) {
             switch (args[0].toLowerCase()) {
                 case "join":
-                    return null; // имена игроков
+                case "accept":
+                case "deny":
+                    return null; // названия городов
                 case "kick":
                 case "add":
                 case "rank":
@@ -212,11 +221,13 @@ public class TownCmd implements CommandExecutor, TabCompleter {
             player.sendMessage("§e/town new <название> §7- создать город");
             player.sendMessage("§e/town ask §7- запрос во все открытые города");
             player.sendMessage("§e/town join <название> §7- вступить в открытый город");
+            player.sendMessage("§e/town accept <название> §7- принять приглашение");
+            player.sendMessage("§e/town deny <название> §7- отклонить приглашение");
         } else {
             String townName = plugin.getTownManager().getTownName(townId);
             String rank = plugin.getTownManager().getRank(player);
             player.sendMessage("§aГород: §f" + townName + " §7(ранг: " + rank + ")");
-            player.sendMessage("§e/town claim [радиус] §7- захватить чанки");
+            player.sendMessage("§e/town claim §7- захватить один чанк");
             player.sendMessage("§e/town unclaim [all] §7- снять чанк или всю территорию");
             player.sendMessage("§e/town builds §7- меню построек");
             player.sendMessage("§e/town inventory (inv) §7- открыть склад города");

@@ -7,6 +7,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import ru.citiesandempires.CitiesAndEmpires;
 import ru.citiesandempires.managers.TownManager;
@@ -23,8 +25,7 @@ public class TownProtect implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) {
         Player p = e.getPlayer();
-        Chunk chunk = e.getBlock().getChunk();
-        if (!canBreakOrPlace(p, chunk)) {
+        if (!canBreakOrPlace(p, e.getBlock().getChunk())) {
             e.setCancelled(true);
             p.sendMessage("§cЭто чужая территория!");
         }
@@ -33,10 +34,29 @@ public class TownProtect implements Listener {
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent e) {
         Player p = e.getPlayer();
-        Chunk chunk = e.getBlock().getChunk();
-        if (!canBreakOrPlace(p, chunk)) {
+        if (!canBreakOrPlace(p, e.getBlock().getChunk())) {
             e.setCancelled(true);
             p.sendMessage("§cЭто чужая территория!");
+        }
+    }
+
+    // Запрет выливания жидкости (ведро воды, лавы, рыбы)
+    @EventHandler
+    public void onBucketEmpty(PlayerBucketEmptyEvent e) {
+        Player p = e.getPlayer();
+        if (!canBreakOrPlace(p, e.getBlockClicked().getRelative(e.getBlockFace()).getChunk())) {
+            e.setCancelled(true);
+            p.sendMessage("§cНельзя разливать жидкости на чужой территории!");
+        }
+    }
+
+    // Запрет забора жидкости (зачерпывание) – на всякий случай
+    @EventHandler
+    public void onBucketFill(PlayerBucketFillEvent e) {
+        Player p = e.getPlayer();
+        if (!canBreakOrPlace(p, e.getBlockClicked().getChunk())) {
+            e.setCancelled(true);
+            p.sendMessage("§cНельзя забирать жидкости на чужой территории!");
         }
     }
 
@@ -57,7 +77,6 @@ public class TownProtect implements Listener {
         p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
     }
 
-    // Явная проверка: дикие земли открыты для всех
     private boolean canBreakOrPlace(Player player, Chunk chunk) {
         // Если чанк не захвачен – дикая земля, можно всем
         if (!townManager.isClaimed(chunk.getWorld().getName(), chunk.getX(), chunk.getZ())) {

@@ -1,5 +1,6 @@
 package ru.citiesandempires.managers;
 
+import net.md_5.bungee.api.chat.*;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -10,14 +11,15 @@ import java.util.*;
 
 public class TownManager {
     private final CitiesAndEmpires plugin;
-    // Городские склады (в памяти, не сохраняются в БД для простоты)
     private final Map<Integer, Inventory> townStorages = new HashMap<>();
+    // Хранилище активных приглашений: ключ = UUID приглашённого, значение = ID города
+    private final Map<String, Integer> pendingInvites = new HashMap<>();
 
     public TownManager(CitiesAndEmpires plugin) {
         this.plugin = plugin;
     }
 
-    // ========== СОЗДАНИЕ ГОРОДА ==========
+    // ========== СОЗДАНИЕ ГОРОДА (автозахват чанка + оповещение в чат) ==========
     public boolean createTown(Player player, String name) {
         if (!hasCreationItems(player)) {
             player.sendMessage("§cНе хватает ресурсов: 128 булыжника, 128 дуб. досок, 8 угля.");
@@ -40,6 +42,11 @@ public class TownManager {
             if (rs.next()) {
                 int townId = rs.getInt(1);
                 addMember(townId, uuid, "Мэр");
+                // Автоматически захватываем один чанк, где стоит игрок
+                Chunk chunk = player.getLocation().getChunk();
+                claimSingleChunk(townId, player.getWorld().getName(), chunk.getX(), chunk.getZ());
+                // Оповещение в чат
+                Bukkit.broadcastMessage("§6[Город] §fИгрок §e" + player.getName() + " §fсоздал город §a" + name + "§f!");
                 player.sendMessage("§aГород " + name + " создан! Вы стали мэром.");
                 return true;
             } else {
@@ -94,25 +101,25 @@ public class TownManager {
         }
     }
 
-    // ========== ЗАХВАТ ЧАНКОВ ==========
+    // ========== ЗАХВАТ ЧАНКОВ (теперь строго один) ==========
     public boolean claimChunk(Player player, int radius) {
+        // radius игнорируется – всегда 1 чанк
         int townId = getTownIdByMember(player.getUniqueId().toString());
         if (townId == 0) {
             player.sendMessage("§cВы не состоите в городе.");
             return false;
         }
-        World world = player.getWorld();
-        Chunk center = player.getLocation().getChunk();
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                Chunk c = world.getChunkAt(center.getX() + dx, center.getZ() + dz);
-                if (!isClaimed(world.getName(), c.getX(), c.getZ())) {
-                    claimSingleChunk(townId, world.getName(), c.getX(), c.getZ());
-                }
-            }
+        Chunk chunk = player.getLocation().getChunk();
+        if (isClaimed(chunk.getWorld().getName(), chunk.getX(), chunk.getZ())) {
+            player.sendMessage("§cЭтот чанк уже захвачен.");
+            return false;
         }
-        player.sendMessage("§aТерритория захвачена.");
-        return true;
+        if (claimSingleChunk(townId, chunk.getWorld().getName(), chunk.getX(), chunk.getZ())) {
+            player.sendMessage("§aЧанк захвачен вашим городом.");
+            return true;
+        }
+        player.sendMessage("§cНе удалось захватить чанк.");
+        return false;
     }
 
     public boolean claimSingleChunk(int townId, String world, int x, int z) {
@@ -290,7 +297,8 @@ public class TownManager {
         return true;
     }
 
-    public boolean addPlayer(Player inviter, String targetName) {
+    // ---------- НОВАЯ СИСТЕМА ПРИГЛАШЕНИЙ ----------
+    public boolean invitePlayer(Player inviter, String targetName) {
         int townId = getTownIdByMember(inviter.getUniqueId().toString());
         if (townId == 0) return false;
         String rank = getRank(inviter);
@@ -307,12 +315,80 @@ public class TownManager {
             inviter.sendMessage("§cИгрок уже состоит в другом городе.");
             return false;
         }
-        addMember(townId, target.getUniqueId().toString(), "Житель");
-        inviter.sendMessage("§aИгрок " + targetName + " добавлен в город.");
-        target.sendMessage("§aВас добавили в город " + getTownName(townId) + ".");
+        // Сохраняем приглашение
+        pendingInvites.put(target.getUniqueId().toString(), townId);
+        String townName = getTownName(townId);
+
+        // Отправляем приглашённому красивое сообщение с кнопками
+        TextComponent message = new TextComponent("§6Вас приглашают в город §a" + townName + "§6. ");
+        TextComponent accept = new TextComponent("§a[Принять]");
+        accept.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/town accept " + townName));
+        TextComponent space = new TextComponent(" ");
+        TextComponent deny = new TextComponent("§c[Отклонить]");
+        deny.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/town deny " + townName));
+
+        message.addExtra(accept);
+        message.addExtra(space);
+        message.addExtra(deny);
+        target.spigot().sendMessage(message);
+
+        inviter.sendMessage("§aПриглашение отправлено игроку " + targetName + ".");
         return true;
     }
 
+    // Принять приглашение (вызывается командой /town accept <город>)
+    public boolean acceptInvite(Player player, String townName) {
+        String uuid = player.getUniqueId().toString();
+        Integer townId = pendingInvites.remove(uuid);
+        if (townId == null) {
+            player.sendMessage("§cУ вас нет активных приглашений.");
+            return false;
+        }
+        String invitedTownName = getTownName(townId);
+        if (invitedTownName == null || !invitedTownName.equalsIgnoreCase(townName)) {
+            player.sendMessage("§cПриглашение не найдено или устарело.");
+            return false;
+        }
+        if (getTownIdByMember(uuid) != 0) {
+            player.sendMessage("§cВы уже состоите в городе.");
+            return false;
+        }
+        addMember(townId, uuid, "Житель");
+        player.sendMessage("§aВы вступили в город " + invitedTownName + "!");
+
+        // Уведомляем мэра (или всех с правом приглашать)
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            if (getTownIdByMember(p.getUniqueId().toString()) == townId) {
+                p.sendMessage("§aИгрок " + player.getName() + " принял приглашение и присоединился к городу.");
+            }
+        }
+        return true;
+    }
+
+    // Отклонить приглашение
+    public boolean denyInvite(Player player, String townName) {
+        String uuid = player.getUniqueId().toString();
+        Integer townId = pendingInvites.remove(uuid);
+        if (townId == null) {
+            player.sendMessage("§cУ вас нет активных приглашений.");
+            return false;
+        }
+        String invitedTownName = getTownName(townId);
+        if (invitedTownName == null || !invitedTownName.equalsIgnoreCase(townName)) {
+            player.sendMessage("§cПриглашение не найдено или устарело.");
+            return false;
+        }
+        player.sendMessage("§7Вы отклонили приглашение в город " + invitedTownName + ".");
+        // Уведомляем того, кто приглашал (может быть несколько, но уведомим мэра или того, кто онлайн)
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            if (getTownIdByMember(p.getUniqueId().toString()) == townId) {
+                p.sendMessage("§cИгрок " + player.getName() + " отклонил ваше приглашение.");
+            }
+        }
+        return true;
+    }
+
+    // Старый askForInvite
     public boolean askForInvite(Player player) {
         for (Player mayor : plugin.getServer().getOnlinePlayers()) {
             if (isMayor(mayor)) {
@@ -461,7 +537,7 @@ public class TownManager {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt("century");
         } catch (SQLException e) { }
-        return 1; // Примитивный
+        return 1;
     }
 
     public void setCentury(int townId, int century) {
