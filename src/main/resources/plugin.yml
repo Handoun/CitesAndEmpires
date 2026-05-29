@@ -1,0 +1,14 @@
+name: CitiesAndEmpires
+version: 1.0.0
+main: ru.citiesandempires.CitiesAndEmpires
+api-version: 1.20
+author: ServerDev
+depend: [Vault, PlaceholderAPI]
+softdepend: [dynmap, BlueMap]
+commands:
+  town:
+    description: Управление городом
+  nation:
+    description: Управление нацией
+  plot:
+    description: Управление участком

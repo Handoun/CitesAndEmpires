@@ -1,0 +1,29 @@
+database:
+  type: SQLite
+  mysql:
+    host: localhost
+    port: 3306
+    database: cities
+    username: root
+    password: password
+
+town:
+  creation-cost:
+    cobblestone: 128
+    oak-planks: 128
+    coal: 8
+  daily-tax-per-chunk: 10.0
+  max-name-length: 16
+
+nation:
+  max-name-length: 16
+
+war:
+  points-to-win: 100
+
+buildings:
+  levels:
+    security-institute: 3
+    military-hospital: 5
+    school: 8
+    labor-exchange: 2
