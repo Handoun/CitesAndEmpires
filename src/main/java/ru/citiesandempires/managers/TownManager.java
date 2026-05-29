@@ -14,30 +14,47 @@ public class TownManager {
         this.plugin = plugin;
     }
 
+    // ========== СОЗДАНИЕ ГОРОДА (исправлено) ==========
     public boolean createTown(Player player, String name) {
+        // Проверка ресурсов
         if (!hasCreationItems(player)) {
             player.sendMessage("§cНе хватает ресурсов: 128 булыжника, 128 дуб. досок, 8 угля.");
             return false;
         }
+
+        // Убираем ресурсы
         removeCreationItems(player);
 
         String uuid = player.getUniqueId().toString();
+
+        // Проверяем, не состоит ли игрок уже в другом городе
+        if (getTownIdByMember(uuid) != 0) {
+            player.sendMessage("§cВы уже состоите в городе. Покиньте его перед созданием нового.");
+            return false;
+        }
+
+        // Вставляем город и сразу получаем town_id
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                 "INSERT INTO towns (name, mayor_uuid) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+                     "INSERT INTO towns (name, mayor_uuid) VALUES (?, ?)",
+                     Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, name);
             ps.setString(2, uuid);
             ps.executeUpdate();
+
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
                 int townId = rs.getInt(1);
+                // Добавляем мэра (используем REPLACE для надёжности)
                 addMember(townId, uuid, "Мэр");
-                player.sendMessage("§aГород " + name + " создан!");
+                player.sendMessage("§aГород " + name + " создан! Вы стали мэром.");
                 return true;
+            } else {
+                player.sendMessage("§cНе удалось получить ID города.");
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            player.sendMessage("§cОшибка создания города.");
+            player.sendMessage("§cОшибка базы данных при создании города. Смотрите консоль.");
         }
         return false;
     }
@@ -58,21 +75,28 @@ public class TownManager {
         p.getInventory().removeItem(new ItemStack(mat, amount));
     }
 
+    // ========== ДОБАВЛЕНИЕ ЧЛЕНА (исправлено на INSERT OR REPLACE) ==========
     private void addMember(int townId, String uuid, String rank) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                 "INSERT OR IGNORE INTO town_members (town_id, uuid, rank) VALUES (?, ?, ?)")) {
+                     "INSERT OR REPLACE INTO town_members (town_id, uuid, rank) VALUES (?, ?, ?)")) {
             ps.setInt(1, townId);
             ps.setString(2, uuid);
             ps.setString(3, rank);
             ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
+    // ========== ЗАХВАТ ЧАНКОВ ==========
     public boolean claimChunk(Player player, int radius) {
         String uuid = player.getUniqueId().toString();
         int townId = getTownIdByMember(uuid);
-        if (townId == 0) { player.sendMessage("§cВы не состоите в городе."); return false; }
+        if (townId == 0) {
+            player.sendMessage("§cВы не состоите в городе.");
+            return false;
+        }
         World world = player.getWorld();
         Chunk center = player.getLocation().getChunk();
         for (int dx = -radius; dx <= radius; dx++) {
@@ -90,32 +114,37 @@ public class TownManager {
     public boolean claimSingleChunk(int townId, String world, int x, int z) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                 "INSERT INTO town_chunks (town_id, world, x, z) VALUES (?, ?, ?, ?)")) {
+                     "INSERT INTO town_chunks (town_id, world, x, z) VALUES (?, ?, ?, ?)")) {
             ps.setInt(1, townId);
             ps.setString(2, world);
             ps.setInt(3, x);
             ps.setInt(4, z);
             ps.executeUpdate();
             return true;
-        } catch (SQLException e) { return false; }
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     public boolean isClaimed(String world, int x, int z) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                 "SELECT COUNT(*) FROM town_chunks WHERE world=? AND x=? AND z=?")) {
+                     "SELECT COUNT(*) FROM town_chunks WHERE world=? AND x=? AND z=?")) {
             ps.setString(1, world);
             ps.setInt(2, x);
             ps.setInt(3, z);
             ResultSet rs = ps.executeQuery();
             return rs.next() && rs.getInt(1) > 0;
-        } catch (SQLException e) { return false; }
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
+    // ========== ПОЛУЧЕНИЕ ID ГОРОДА ПО ЧЛЕНУ ==========
     public int getTownIdByMember(String uuid) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                 "SELECT town_id FROM town_members WHERE uuid=?")) {
+                     "SELECT town_id FROM town_members WHERE uuid=?")) {
             ps.setString(1, uuid);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt("town_id");
@@ -123,6 +152,7 @@ public class TownManager {
         return 0;
     }
 
+    // ========== ПОЛУЧЕНИЕ ИМЕНИ ГОРОДА ==========
     public String getTownName(int townId) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement("SELECT name FROM towns WHERE id=?")) {
