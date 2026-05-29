@@ -14,15 +14,13 @@ public class TownManager {
         this.plugin = plugin;
     }
 
-    // ========== СОЗДАНИЕ ГОРОДА (исправлено) ==========
+    // ========== СОЗДАНИЕ ГОРОДА ==========
     public boolean createTown(Player player, String name) {
         // Проверка ресурсов
         if (!hasCreationItems(player)) {
             player.sendMessage("§cНе хватает ресурсов: 128 булыжника, 128 дуб. досок, 8 угля.");
             return false;
         }
-
-        // Убираем ресурсы
         removeCreationItems(player);
 
         String uuid = player.getUniqueId().toString();
@@ -33,7 +31,6 @@ public class TownManager {
             return false;
         }
 
-        // Вставляем город и сразу получаем town_id
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "INSERT INTO towns (name, mayor_uuid) VALUES (?, ?)",
@@ -45,7 +42,6 @@ public class TownManager {
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
                 int townId = rs.getInt(1);
-                // Добавляем мэра (используем REPLACE для надёжности)
                 addMember(townId, uuid, "Мэр");
                 player.sendMessage("§aГород " + name + " создан! Вы стали мэром.");
                 return true;
@@ -75,7 +71,7 @@ public class TownManager {
         p.getInventory().removeItem(new ItemStack(mat, amount));
     }
 
-    // ========== ДОБАВЛЕНИЕ ЧЛЕНА (исправлено на INSERT OR REPLACE) ==========
+    // ========== ДОБАВЛЕНИЕ ЧЛЕНА ==========
     private void addMember(int townId, String uuid, String rank) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
@@ -161,5 +157,20 @@ public class TownManager {
             if (rs.next()) return rs.getString("name");
         } catch (SQLException e) { }
         return null;
+    }
+
+    // ========== ПОЛУЧЕНИЕ РАНГА ИГРОКА ==========
+    public String getRank(Player player) {
+        int townId = getTownIdByMember(player.getUniqueId().toString());
+        if (townId == 0) return null;
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT rank FROM town_members WHERE town_id=? AND uuid=?")) {
+            ps.setInt(1, townId);
+            ps.setString(2, player.getUniqueId().toString());
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getString("rank");
+        } catch (SQLException e) { }
+        return "Житель";
     }
 }
