@@ -11,9 +11,6 @@ public class Database {
         this.plugin = plugin;
     }
 
-    /**
-     * Подключается к базе данных при запуске плагина.
-     */
     public void connect() {
         try {
             openConnection();
@@ -24,9 +21,6 @@ public class Database {
         }
     }
 
-    /**
-     * Закрывает соединение при выключении плагина.
-     */
     public void disconnect() {
         try {
             if (connection != null && !connection.isClosed()) {
@@ -38,9 +32,6 @@ public class Database {
         }
     }
 
-    /**
-     * Возвращает активное соединение. Если оно закрыто или отсутствует, открывает новое.
-     */
     public Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
@@ -53,9 +44,6 @@ public class Database {
         return connection;
     }
 
-    /**
-     * Внутренний метод для открытия соединения с учётом настроек (SQLite/MySQL).
-     */
     private void openConnection() throws SQLException {
         String type = plugin.getConfig().getString("database.type", "SQLite");
         if (type.equalsIgnoreCase("MySQL")) {
@@ -67,14 +55,10 @@ public class Database {
             connection = DriverManager.getConnection(
                     "jdbc:mysql://" + host + ":" + port + "/" + db + "?useSSL=false", user, pass);
         } else {
-            // SQLite – создаст файл, если его нет
             connection = DriverManager.getConnection("jdbc:sqlite:" + plugin.getDataFolder() + "/database.db");
         }
     }
 
-    /**
-     * Создаёт все таблицы, если их ещё нет.
-     */
     public void createTables() {
         String[] queries = {
             "CREATE TABLE IF NOT EXISTS towns (" +
@@ -120,9 +104,11 @@ public class Database {
                 "PRIMARY KEY (town_id, building_name))"
         };
         try (Statement stmt = getConnection().createStatement()) {
-            for (String q : queries) {
-                stmt.executeUpdate(q);
-            }
+            for (String q : queries) stmt.executeUpdate(q);
+            // Миграция: добавляем столбец century, если его ещё нет
+            try {
+                stmt.executeUpdate("ALTER TABLE towns ADD COLUMN century INTEGER DEFAULT 1");
+            } catch (SQLException ignored) { /* столбец уже существует */ }
         } catch (SQLException e) {
             plugin.getLogger().severe("Ошибка создания таблиц: " + e.getMessage());
             e.printStackTrace();

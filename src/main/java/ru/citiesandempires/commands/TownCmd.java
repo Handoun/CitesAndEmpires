@@ -4,6 +4,7 @@ import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import ru.citiesandempires.CitiesAndEmpires;
 import ru.citiesandempires.gui.BuildsGUI;
+import ru.citiesandempires.gui.CenturyGUI;
 import java.util.*;
 
 public class TownCmd implements CommandExecutor, TabCompleter {
@@ -76,8 +77,14 @@ public class TownCmd implements CommandExecutor, TabCompleter {
                 }
                 break;
             case "builds":
-                // ИСПРАВЛЕНО: теперь передаём townId
                 new BuildsGUI(plugin, townId).open(player);
+                break;
+            case "inventory":
+            case "inv":
+                player.openInventory(plugin.getTownManager().getTownStorage(townId));
+                break;
+            case "century":
+                new CenturyGUI(plugin, townId).open(player);
                 break;
             case "deposit":
                 if (args.length < 2) { player.sendMessage("§c/town deposit <сумма>"); return true; }
@@ -137,7 +144,6 @@ public class TownCmd implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    // ========== TAB-COMPLETER ==========
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String label, String[] args) {
         if (!(sender instanceof Player)) return null;
@@ -154,6 +160,9 @@ public class TownCmd implements CommandExecutor, TabCompleter {
                 subs.add("claim");
                 subs.add("unclaim");
                 subs.add("builds");
+                subs.add("inventory");
+                subs.add("inv");
+                subs.add("century");
                 subs.add("deposit");
                 subs.add("withdraw");
                 subs.add("leave");
@@ -210,6 +219,8 @@ public class TownCmd implements CommandExecutor, TabCompleter {
             player.sendMessage("§e/town claim [радиус] §7- захватить чанки");
             player.sendMessage("§e/town unclaim [all] §7- снять чанк или всю территорию");
             player.sendMessage("§e/town builds §7- меню построек");
+            player.sendMessage("§e/town inventory (inv) §7- открыть склад города");
+            player.sendMessage("§e/town century §7- эпохи города");
             player.sendMessage("§e/town deposit <сумма> §7- пополнить казну");
             player.sendMessage("§e/town withdraw <сумма> §7- снять из казны (мэр)");
             player.sendMessage("§e/town add <ник> §7- пригласить игрока");

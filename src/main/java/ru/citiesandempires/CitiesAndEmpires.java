@@ -38,6 +38,8 @@ public final class CitiesAndEmpires extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TownProtect(this), this);
         getServer().getPluginManager().registerEvents(new BuildingsListener(this), this);
         getServer().getPluginManager().registerEvents(new WarListener(this), this);
+        getServer().getPluginManager().registerEvents(new CraftListener(this), this);
+        getServer().getPluginManager().registerEvents(new MiningListener(this), this);
 
         getLogger().info("CitiesAndEmpires успешно запущен!");
     }

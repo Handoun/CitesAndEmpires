@@ -2,6 +2,7 @@ package ru.citiesandempires.managers;
 
 import org.bukkit.*;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import ru.citiesandempires.CitiesAndEmpires;
 import java.sql.*;
@@ -9,6 +10,8 @@ import java.util.*;
 
 public class TownManager {
     private final CitiesAndEmpires plugin;
+    // Городские склады (в памяти, не сохраняются в БД для простоты)
+    private final Map<Integer, Inventory> townStorages = new HashMap<>();
 
     public TownManager(CitiesAndEmpires plugin) {
         this.plugin = plugin;
@@ -227,7 +230,6 @@ public class TownManager {
         return playerTownId == chunkTownId;
     }
 
-    // НОВОЕ: получение названия города по координатам (для ActionBar)
     public String getTownNameAt(String world, int x, int z) {
         int townId = getTownIdAt(world, x, z);
         if (townId == 0) return null;
@@ -444,5 +446,30 @@ public class TownManager {
 
     public boolean isMemberOfTown(Player player, int townId) {
         return getTownIdByMember(player.getUniqueId().toString()) == townId;
+    }
+
+    // ========== СКЛАД ГОРОДА ==========
+    public Inventory getTownStorage(int townId) {
+        return townStorages.computeIfAbsent(townId, id -> Bukkit.createInventory(null, 54, "Склад города"));
+    }
+
+    // ========== ВЕК ГОРОДА ==========
+    public int getCentury(int townId) {
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT century FROM towns WHERE id=?")) {
+            ps.setInt(1, townId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("century");
+        } catch (SQLException e) { }
+        return 1; // Примитивный
+    }
+
+    public void setCentury(int townId, int century) {
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement("UPDATE towns SET century=? WHERE id=?")) {
+            ps.setInt(1, century);
+            ps.setInt(2, townId);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
     }
 }
