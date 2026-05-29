@@ -32,22 +32,27 @@
     </repositories>
 
     <dependencies>
+        <!-- Spigot API 1.20.1 -->
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.20.1-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Vault -->
         <dependency>
             <groupId>com.github.MilkBowl</groupId>
             <artifactId>VaultAPI</artifactId>
             <version>1.7</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- PlaceholderAPI (исправленная версия) -->
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
-            <version>2.11.4</version>
+            <version>2.11.6</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
