@@ -11,33 +11,70 @@ public class Database {
         this.plugin = plugin;
     }
 
+    /**
+     * Подключается к базе данных при запуске плагина.
+     */
     public void connect() {
-        String type = plugin.getConfig().getString("database.type", "SQLite");
         try {
-            if (type.equalsIgnoreCase("MySQL")) {
-                String host = plugin.getConfig().getString("database.mysql.host");
-                String port = plugin.getConfig().getString("database.mysql.port");
-                String db = plugin.getConfig().getString("database.mysql.database");
-                String user = plugin.getConfig().getString("database.mysql.username");
-                String pass = plugin.getConfig().getString("database.mysql.password");
-                connection = DriverManager.getConnection(
-                    "jdbc:mysql://" + host + ":" + port + "/" + db + "?useSSL=false", user, pass);
-            } else {
-                connection = DriverManager.getConnection("jdbc:sqlite:" + plugin.getDataFolder() + "/database.db");
+            openConnection();
+            plugin.getLogger().info("База данных успешно подключена.");
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Не удалось подключиться к базе данных: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Закрывает соединение при выключении плагина.
+     */
+    public void disconnect() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                plugin.getLogger().info("Соединение с базой данных закрыто.");
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void disconnect() {
+    /**
+     * Возвращает активное соединение. Если оно закрыто или отсутствует, открывает новое.
+     */
+    public Connection getConnection() {
         try {
-            if (connection != null && !connection.isClosed()) connection.close();
-        } catch (SQLException e) { e.printStackTrace(); }
+            if (connection == null || connection.isClosed()) {
+                openConnection();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Ошибка при проверке/открытии соединения: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return connection;
     }
 
-    public Connection getConnection() { return connection; }
+    /**
+     * Внутренний метод для открытия соединения с учётом настроек (SQLite/MySQL).
+     */
+    private void openConnection() throws SQLException {
+        String type = plugin.getConfig().getString("database.type", "SQLite");
+        if (type.equalsIgnoreCase("MySQL")) {
+            String host = plugin.getConfig().getString("database.mysql.host");
+            String port = plugin.getConfig().getString("database.mysql.port");
+            String db = plugin.getConfig().getString("database.mysql.database");
+            String user = plugin.getConfig().getString("database.mysql.username");
+            String pass = plugin.getConfig().getString("database.mysql.password");
+            connection = DriverManager.getConnection(
+                    "jdbc:mysql://" + host + ":" + port + "/" + db + "?useSSL=false", user, pass);
+        } else {
+            // SQLite – создаст файл, если его нет
+            connection = DriverManager.getConnection("jdbc:sqlite:" + plugin.getDataFolder() + "/database.db");
+        }
+    }
 
+    /**
+     * Создаёт все таблицы, если их ещё нет.
+     */
     public void createTables() {
         String[] queries = {
             "CREATE TABLE IF NOT EXISTS towns (" +
@@ -82,8 +119,13 @@ public class Database {
                 "level INTEGER DEFAULT 0, " +
                 "PRIMARY KEY (town_id, building_name))"
         };
-        try (Statement stmt = connection.createStatement()) {
-            for (String q : queries) stmt.executeUpdate(q);
-        } catch (SQLException e) { e.printStackTrace(); }
+        try (Statement stmt = getConnection().createStatement()) {
+            for (String q : queries) {
+                stmt.executeUpdate(q);
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Ошибка создания таблиц: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
