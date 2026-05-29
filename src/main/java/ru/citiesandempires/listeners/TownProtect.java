@@ -22,17 +22,21 @@ public class TownProtect implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) {
-        if (!canBreakOrPlace(e.getPlayer(), e.getBlock().getChunk())) {
+        Player p = e.getPlayer();
+        Chunk chunk = e.getBlock().getChunk();
+        if (!canBreakOrPlace(p, chunk)) {
             e.setCancelled(true);
-            e.getPlayer().sendMessage("§cЭто чужая территория!");
+            p.sendMessage("§cЭто чужая территория!");
         }
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent e) {
-        if (!canBreakOrPlace(e.getPlayer(), e.getBlock().getChunk())) {
+        Player p = e.getPlayer();
+        Chunk chunk = e.getBlock().getChunk();
+        if (!canBreakOrPlace(p, chunk)) {
             e.setCancelled(true);
-            e.getPlayer().sendMessage("§cЭто чужая территория!");
+            p.sendMessage("§cЭто чужая территория!");
         }
     }
 
@@ -53,16 +57,13 @@ public class TownProtect implements Listener {
         p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
     }
 
-    /**
-     * Возвращает true, если игрок может ломать/ставить блоки в этом чанке.
-     * Разрешает всегда на диких землях.
-     */
+    // Явная проверка: дикие земли открыты для всех
     private boolean canBreakOrPlace(Player player, Chunk chunk) {
-        // Дикие земли – можно всем
+        // Если чанк не захвачен – дикая земля, можно всем
         if (!townManager.isClaimed(chunk.getWorld().getName(), chunk.getX(), chunk.getZ())) {
             return true;
         }
-        // Городская земля – только своим
+        // Иначе чанк городской – проверяем членство
         return townManager.canBuild(player, chunk);
     }
 }
