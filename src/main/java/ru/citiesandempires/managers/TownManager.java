@@ -65,7 +65,6 @@ public class TownManager {
         p.getInventory().removeItem(new ItemStack(mat, amount));
     }
 
-    // ========== ЧЛЕНСТВО ==========
     private void addMember(int townId, String uuid, String rank) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
@@ -142,7 +141,6 @@ public class TownManager {
         }
     }
 
-    // Снятие привата
     public boolean unclaimChunk(Player player) {
         int townId = getTownIdByMember(player.getUniqueId().toString());
         if (townId == 0) {
@@ -178,7 +176,7 @@ public class TownManager {
         }
     }
 
-    // ========== ИНФОРМАЦИЯ О ЧЛЕНАХ ==========
+    // ========== ИНФОРМАЦИЯ ==========
     public int getTownIdByMember(String uuid) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
@@ -218,19 +216,22 @@ public class TownManager {
         return "Мэр".equals(getRank(player));
     }
 
-    // Проверка, может ли игрок строить в чанке
     public boolean canBuild(Player player, Chunk chunk) {
         if (player.hasPermission("cities.bypass")) return true;
         String world = chunk.getWorld().getName();
         int x = chunk.getX(), z = chunk.getZ();
-        // Чанк не захвачен – дикая земля, можно строить
         if (!isClaimed(world, x, z)) return true;
-        // Чанк захвачен – ищем town_id
         int chunkTownId = getTownIdAt(world, x, z);
         if (chunkTownId == 0) return true;
-        // Проверяем, член ли игрок этого города
         int playerTownId = getTownIdByMember(player.getUniqueId().toString());
         return playerTownId == chunkTownId;
+    }
+
+    // НОВОЕ: получение названия города по координатам (для ActionBar)
+    public String getTownNameAt(String world, int x, int z) {
+        int townId = getTownIdAt(world, x, z);
+        if (townId == 0) return null;
+        return getTownName(townId);
     }
 
     private int getTownIdAt(String world, int x, int z) {
@@ -311,8 +312,6 @@ public class TownManager {
     }
 
     public boolean askForInvite(Player player) {
-        // Отправляем уведомление мэрам городов с открытым набором (open_entry=1)
-        // Пока просто выводим сообщение всем мэрам в онлайне
         for (Player mayor : plugin.getServer().getOnlinePlayers()) {
             if (isMayor(mayor)) {
                 int tId = getTownIdByMember(mayor.getUniqueId().toString());
@@ -391,7 +390,6 @@ public class TownManager {
         int townId = getTownIdByMember(granter.getUniqueId().toString());
         if (townId == 0) return false;
         String granterRank = getRank(granter);
-        // Мэр может назначать любого, Советник может назначать ниже себя (кроме мэра)
         if (!"Мэр".equals(granterRank) && !"Советник".equals(granterRank)) {
             granter.sendMessage("§cНедостаточно прав для назначения рангов.");
             return false;
@@ -409,7 +407,6 @@ public class TownManager {
             granter.sendMessage("§cНельзя назначить мэра через эту команду.");
             return false;
         }
-        // Советник не может назначать советников и выше
         if ("Советник".equals(granterRank) && ("Советник".equals(rank) || "Мэр".equals(rank))) {
             granter.sendMessage("§cВы не можете назначить этот ранг.");
             return false;
@@ -424,8 +421,7 @@ public class TownManager {
     public boolean spawnTown(Player player) {
         int townId = getTownIdByMember(player.getUniqueId().toString());
         if (townId == 0) return false;
-        // Телепортируем на первый чанк города
-        String worldName = player.getWorld().getName(); // fallback
+        String worldName = player.getWorld().getName();
         int cx = 0, cz = 0;
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
@@ -446,7 +442,6 @@ public class TownManager {
         return true;
     }
 
-    // ========== ВСПОМОГАТЕЛЬНОЕ ==========
     public boolean isMemberOfTown(Player player, int townId) {
         return getTownIdByMember(player.getUniqueId().toString()) == townId;
     }

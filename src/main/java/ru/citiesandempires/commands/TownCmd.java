@@ -76,7 +76,8 @@ public class TownCmd implements CommandExecutor, TabCompleter {
                 }
                 break;
             case "builds":
-                new BuildsGUI(plugin).open(player);
+                // ИСПРАВЛЕНО: теперь передаём townId
+                new BuildsGUI(plugin, townId).open(player);
                 break;
             case "deposit":
                 if (args.length < 2) { player.sendMessage("§c/town deposit <сумма>"); return true; }
@@ -164,16 +165,13 @@ public class TownCmd implements CommandExecutor, TabCompleter {
             }
             return filterByInput(subs, args[0]);
         } else if (args.length == 2) {
-            // Подсказки для второго аргумента
             switch (args[0].toLowerCase()) {
                 case "join":
-                    // Можно вернуть список городов, но для простоты пока null (будут игроки)
-                    return null;
+                    return null; // имена игроков
                 case "kick":
                 case "add":
                 case "rank":
-                    // Подсказывать онлайн-игроков
-                    return null; // стандартное поведение — имена игроков
+                    return null; // имена игроков
                 case "toggle":
                     return filterByInput(Arrays.asList("open"), args[1]);
                 case "unclaim":
@@ -182,10 +180,8 @@ public class TownCmd implements CommandExecutor, TabCompleter {
                     return null;
             }
         } else if (args.length == 3 && "rank".equalsIgnoreCase(args[0]) && "add".equalsIgnoreCase(args[1])) {
-            // Подсказывать онлайн-игроков
-            return null;
+            return null; // имена игроков
         } else if (args.length == 4 && "rank".equalsIgnoreCase(args[0]) && "add".equalsIgnoreCase(args[1])) {
-            // Подсказывать возможные ранги
             return filterByInput(Arrays.asList("Советник", "Депутат", "Рекрутер", "Житель"), args[3]);
         }
         return null;
